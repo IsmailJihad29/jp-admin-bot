@@ -1,0 +1,251 @@
+// ============================================================
+//  rtbr.js - Champion of the Week / Priority for Referral board
+//  Weekly announcement (Thursday 8 PM by default) + !rtbr anytime.
+// ============================================================
+'use strict';
+
+const { cohorts } = require('./config');
+const { appsScriptGet } = require('./apps-script-api');
+const { report, reportError } = require('./reporter');
+const { isOn } = require('./automations');
+const { isScheduledToday } = require('./scheduler');
+const { getNumber, resolveChannel, setSetting } = require('./settings');
+const { runQuotaTask } = require('./quota-queue');
+const { normalizeTime, scheduleAtSetting } = require('./runtime-schedule');
+
+const RTBR_ROLE_NAME = 'Champion of the Week';
+const LEGACY_RTBR_ROLE_NAME = 'Right to Be Referred';
+
+function rankRtbrStudents(students, topCount = 10) {
+  return [...(students || [])]
+    .filter(student => student && Number.isFinite(Number(student.total)) && Number(student.total) > 0)
+    .sort((a, b) => Number(b.total) - Number(a.total) ||
+      String(a.discordId || a.email || '').localeCompare(String(b.discordId || b.email || '')))
+    .slice(0, Math.min(25, Math.max(1, Number(topCount) || 10)));
+}
+
+function allRankedRtbrStudents(students) {
+  return [...(students || [])]
+    .filter(student => student && Number.isFinite(Number(student.total)) && Number(student.total) > 0)
+    .sort((a, b) => Number(b.total) - Number(a.total) ||
+      String(a.discordId || a.email || '').localeCompare(String(b.discordId || b.email || '')));
+}
+
+function buildRtbrPayload(students, options = {}) {
+  const days = Math.max(1, Number(options.days) || 7);
+  const topCount = Math.min(25, Math.max(1, Number(options.topCount) || 10));
+  const jobTarget = Math.max(1, Number(options.jobTarget) || 10);
+  const allRanked = allRankedRtbrStudents(students);
+  if (!allRanked.length) return null;
+
+  const topStudents = allRanked.slice(0, topCount);
+  const remainingStudents = allRanked.slice(topCount);
+
+  const medals = ['🥇', '🥈', '🥉'];
+  const topLines = topStudents.map((student, index) =>
+    `${medals[index] || `**${index + 1}.**`} **${student.name || student.email || 'Student'}** — **${Number(student.total)} pts** ` +
+    `(❓${Math.round(Number(student.questions) || 0)} · 🎯${Number(student.interviewCount) || 0} interviews/${Number(student.interviews) || 0} pts · ` +
+    `💼${Number(student.jobApplications) || 0} apps/${Number(student.jobPts) || 0} pts${student.streak ? ` · 🔥${Number(student.streak)} streak` : ''} · ` +
+    `🎤${Number(student.workshopCount) || 0} sessions/${Number(student.workshop) || 0} pts)`);
+
+  const embeds = [{
+    title: `🏆 Champion of the Week — Priority for Referral (last ${days} days)`,
+    description:
+      `Congratulations to our **Champions of the Week**! Top 10 performers earn the **Champion of the Week** role and priority for mentor-special job referrals.\n` +
+      `*Score = Questions ❓ + Interviews 🎯 (15 each) + Applications 💼 (${jobTarget}/day target) + Streak 🔥 + Attendance/Sessions 🎤.*\n\n` +
+      topLines.join('\n'),
+    color: 0xe91e63,
+    footer: { text: 'Published every Thursday by default. Activity is calculated from the cohort Sheet.' },
+  }];
+
+  if (remainingStudents.length > 0) {
+    const remainingLines = remainingStudents.map((student, idx) => {
+      const rank = topCount + idx + 1;
+      const achievements = [
+        `💼 ${Number(student.jobApplications) || 0} apps`,
+        Number(student.interviewCount) ? `🎯 ${student.interviewCount} interviews` : null,
+        Number(student.questions) ? `❓ ${Math.round(student.questions)} pts` : null,
+        Number(student.streak) ? `🔥 ${student.streak} streak` : null,
+      ].filter(Boolean).join(' · ');
+
+      return `**${rank}.** **${student.name || student.email || 'Student'}** — **${Number(student.total)} pts** (${achievements || 'activity logged'})`;
+    });
+
+    const chunks = [];
+    let current = [];
+    let len = 0;
+    for (const line of remainingLines) {
+      if (len + line.length > 3500) {
+        chunks.push(current);
+        current = [];
+        len = 0;
+      }
+      current.push(line);
+      len += line.length + 1;
+    }
+    if (current.length) chunks.push(current);
+
+    chunks.forEach((chunk, i) => {
+      embeds.push({
+        title: i === 0 ? '📊 Cohort Standings & Weekly Achievements' : '📊 Cohort Standings (cont.)',
+        description: chunk.join('\n'),
+        color: 0x3498db,
+        footer: { text: 'Every application, interview, and question counts towards next week’s Champion ranking!' },
+      });
+    });
+  }
+
+  return {
+    content: '@everyone',
+    allowedMentions: { parse: ['everyone'] },
+    embeds,
+  };
+}
+
+async function ensureRtbrRole(guild) {
+  await guild.roles.fetch();
+  let role = guild.roles.cache.find(r => r.name === RTBR_ROLE_NAME);
+  if (!role) {
+    const legacy = guild.roles.cache.find(r => r.name === LEGACY_RTBR_ROLE_NAME);
+    if (legacy) {
+      await legacy.setName(RTBR_ROLE_NAME, 'Rebrand RTBR to Champion of the Week').catch(() => {});
+      role = legacy;
+    }
+  }
+  return role || guild.roles.create({
+    name: RTBR_ROLE_NAME,
+    color: 0xe91e63,
+    hoist: true,
+    mentionable: false,
+    reason: 'JP ADMIN Champion of the Week weekly qualification role',
+  });
+}
+
+async function syncRtbrRole(guild, rankedStudents) {
+  const missingIds = rankedStudents.filter(student => !/^\d{15,22}$/.test(String(student.discordId || '')));
+  if (missingIds.length) {
+    console.warn(`[rtbr] ${missingIds.length} ranked student(s) have no verified Discord ID`);
+  }
+  const role = await ensureRtbrRole(guild);
+  await guild.members.fetch();
+  const validRanked = rankedStudents.filter(student => /^\d{15,22}$/.test(String(student.discordId || '')));
+  const desired = new Set(validRanked.map(student => String(student.discordId)));
+  const remove = role.members.filter(member => !desired.has(member.id));
+  let added = 0;
+  for (const memberId of desired) {
+    const member = guild.members.cache.get(memberId);
+    if (member && !member.roles.cache.has(role.id)) {
+      await member.roles.add(role, 'JP ADMIN Champion of the Week qualification').catch(err => {
+        console.warn(`[rtbr] Failed to add role to ${memberId}:`, err.message);
+      });
+      added++;
+    }
+  }
+  for (const member of remove.values()) {
+    await member.roles.remove(role, 'JP ADMIN Champion of the Week recalculation').catch(err => {
+      console.warn(`[rtbr] Failed to remove role from ${member.id}:`, err.message);
+    });
+  }
+  return { roleId: role.id, added, removed: remove.size, qualified: desired.size, missingIds: missingIds.length };
+}
+
+async function postRtbr(client, cohort) {
+  const days = await getNumber(cohort, 'rtbrdays');
+  const topCount = await getNumber(cohort, 'rtbrtop');
+  const jobTarget = await getNumber(cohort, 'jobstarget');
+  const data = await appsScriptGet(cohort, { action: 'rtbr', days, jobTarget }, {
+    label: 'Champion of the Week leaderboard',
+    timeoutMs: 120000,
+  });
+  const ranked = rankRtbrStudents(data.students, topCount);
+  const guild = await client.guilds.fetch(cohort.guildId);
+
+  let roleResult = null;
+  try {
+    roleResult = await syncRtbrRole(guild, ranked);
+  } catch (roleError) {
+    console.warn(`[rtbr] ${cohort.name} role sync warning:`, roleError.message);
+    report(cohort.name, `Champion of the Week role sync warning: ${roleError.message}`);
+  }
+
+  let channelId = await resolveChannel(cohort, 'channel_rtbr', cohort.channels?.rtbr);
+  if (!channelId) {
+    const found = guild.channels.cache.find(c => c.isTextBased() && (
+      c.name.includes('champion') || c.name.includes('right-to-be-referred') || c.name.includes('rtbr')
+    ));
+    channelId = found?.id || cohort.channels?.discussion;
+  }
+  const channel = await client.channels.fetch(channelId);
+  const payload = buildRtbrPayload(data.students, { days, topCount, jobTarget });
+  if (!payload) {
+    await channel.send('📊 No Champion of the Week activity exists in this window yet. Scores come from questions, interviews, job applications, and attendance.');
+    report(cohort.name, 'Champion of the Week checked: no activity in the configured window');
+    return { students: 0, channelId, roleResult };
+  }
+  await channel.send(payload);
+  const announced = ranked.length;
+  report(cohort.name, `Champion of the Week announced (${announced} champions, ${Math.max(0, (data.students || []).length - announced)} others)`);
+  return { students: announced, channelId, roleResult };
+}
+
+module.exports = function registerRtbr(client) {
+  for (const cohort of cohorts) {
+    scheduleAtSetting(cohort, 'rtbr', 'rtbrtime', async () => {
+      if (!(await isOn(cohort, 'rtbr')) || !(await isScheduledToday(cohort, 'rtbr'))) return;
+      try {
+        await runQuotaTask(`rtbr:${cohort.guildId}`, () => postRtbr(client, cohort));
+      } catch (error) {
+        reportError(cohort.name, `RTBR failed: ${error.message}`);
+        throw error;
+      }
+    });
+    console.log(`[rtbr] ${cohort.name}: runtime-configurable Thursday schedule active`);
+  }
+
+  client.on('messageCreate', async msg => {
+    if (msg.author.bot || !/^!rtbr(?:\s|$)/i.test(msg.content.trim())) return;
+    const cohort = cohorts.find(item => item.guildId === msg.guildId);
+    if (!cohort || !cohort.supervisorIds.includes(msg.author.id)) return;
+    if (msg.channelId !== cohort.channels.supervisor) {
+      return msg.reply(`Run this command in <#${cohort.channels.supervisor}>.`);
+    }
+    const command = msg.content.trim().match(/^!rtbr(?:\s+(top|days|time)\s+(\S+))?$/i);
+    if (!command) return msg.reply('Usage: `!rtbr`, `!rtbr top 10`, `!rtbr days 7`, or `!rtbr time 20:00`.');
+    if (command[1]) {
+      const action = command[1].toLowerCase();
+      const value = command[2];
+      if (action === 'time') {
+        const time = normalizeTime(value);
+        if (!time) return msg.reply('RTBR time must use 24-hour `HH:MM`.');
+        try { await setSetting(cohort, 'rtbrtime', time); }
+        catch (error) { return msg.reply(`❌ RTBR time update failed: ${String(error.message).slice(0, 240)}`); }
+        return msg.reply(`✅ Weekly RTBR time is now **${time}** (${cohort.timezone}).`);
+      }
+      const number = Number(value);
+      const max = action === 'top' ? 25 : 90;
+      if (!Number.isInteger(number) || number < 1 || number > max) {
+        return msg.reply(`RTBR ${action} must be a whole number from 1 to ${max}.`);
+      }
+      try { await setSetting(cohort, action === 'top' ? 'rtbrtop' : 'rtbrdays', number); }
+      catch (error) { return msg.reply(`❌ RTBR setting update failed: ${String(error.message).slice(0, 240)}`); }
+      return msg.reply(`✅ RTBR ${action === 'top' ? 'qualified-role quantity' : 'counting window'} is now **${number}**.`);
+    }
+    await msg.reply({ content: '⏳ Calculating the Champion of the Week leaderboard and reconciling the qualification role...', allowedMentions: { parse: [] } });
+    try {
+      const result = await runQuotaTask(`rtbr-manual:${cohort.guildId}`, () => postRtbr(client, cohort));
+      return msg.channel.send({
+        content: `✅ Champion of the Week posted in <#${result.channelId}> with **${result.students}** champions announced.`,
+        allowedMentions: { parse: [] },
+      });
+    } catch (error) {
+      reportError(cohort.name, `Manual Champion of the Week failed: ${error.message}`);
+      return msg.channel.send(`❌ Champion of the Week failed: ${String(error.message).slice(0, 300)}`);
+    }
+  });
+};
+
+module.exports.buildRtbrPayload = buildRtbrPayload;
+module.exports.postRtbr = postRtbr;
+module.exports.rankRtbrStudents = rankRtbrStudents;
+module.exports.syncRtbrRole = syncRtbrRole;
+module.exports.RTBR_ROLE_NAME = RTBR_ROLE_NAME;
