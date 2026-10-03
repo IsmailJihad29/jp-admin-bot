@@ -16,17 +16,17 @@ function validateRuntimeConfig() {
   const errors = [];
   if (!process.env.DISCORD_TOKEN) errors.push('DISCORD_TOKEN is missing');
   if (!cohorts.length && mode !== 'installer') errors.push('no cohort is configured');
-  if (mode === 'installer') {
-    if (!process.env.COHORT_API_URL) errors.push('COHORT_API_URL is missing for installer mode');
-    if (!process.env.COHORT_API_KEY) errors.push('COHORT_API_KEY is missing for installer mode');
-  }
-  for (const cohort of cohorts) {
-    const label = cohort.name || '(unnamed cohort)';
-    if (!cohort.name) errors.push('COHORT_NAME is missing');
-    if (!cohort.guildId) errors.push(`${label}: guild/server ID is missing`);
-    if (!cohort.appsScriptUrl) errors.push(`${label}: Apps Script URL is missing`);
-    if (!cohort.apiKey) errors.push(`${label}: Apps Script API key is missing`);
-    if (!cohort.supervisorIds?.length) errors.push(`${label}: at least one supervisor ID is required`);
+  // In installer mode, COHORT_API_URL / COHORT_API_KEY are optional in env
+  // because each Discord server can connect its own Apps Script sheet dynamically.
+  if (mode !== 'installer') {
+    for (const cohort of cohorts) {
+      const label = cohort.name || '(unnamed cohort)';
+      if (!cohort.name) errors.push('COHORT_NAME is missing');
+      if (!cohort.guildId) errors.push(`${label}: guild/server ID is missing`);
+      if (!cohort.appsScriptUrl) errors.push(`${label}: Apps Script URL is missing`);
+      if (!cohort.apiKey) errors.push(`${label}: Apps Script API key is missing`);
+      if (!cohort.supervisorIds?.length) errors.push(`${label}: at least one supervisor ID is required`);
+    }
   }
   if (errors.length) throw new Error('Invalid bot configuration:\n- ' + errors.join('\n- '));
 }

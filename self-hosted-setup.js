@@ -7,9 +7,12 @@ const {
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
+  ModalBuilder,
   OverwriteType,
   PermissionFlagsBits,
   PermissionsBitField,
+  TextInputBuilder,
+  TextInputStyle,
 } = require('discord.js');
 const { cohortDefaults, cohorts, mode } = require('./config');
 const { normalizeChannelName } = require('./channel-names');
@@ -21,19 +24,20 @@ const CAPSULE_PREFIX = 'JPADMIN_SETUP_V1:';
 const REQUEST_TIMEOUT_MS = 15000;
 
 function installerSecret() {
-  const secret = String(process.env.COHORT_API_KEY || '').trim();
-  if (secret.length < 32) throw new Error('COHORT_API_KEY must contain at least 32 characters');
+  const secret = String(process.env.COHORT_API_KEY || process.env.DISCORD_TOKEN || '').trim();
+  if (secret.length < 32) throw new Error('COHORT_API_KEY or DISCORD_TOKEN must contain at least 32 characters');
   return secret;
 }
 
-function validateInstallerBackend() {
+function validateInstallerBackend(urlCandidate) {
+  const raw = String(urlCandidate || process.env.COHORT_API_URL || '').trim();
+  if (!raw) return '';
   let url;
-  try { url = new URL(String(process.env.COHORT_API_URL || '').trim()); }
+  try { url = new URL(raw); }
   catch { throw new Error('COHORT_API_URL is missing or invalid'); }
   if (url.protocol !== 'https:' || url.hostname !== 'script.google.com' || !/(?:\/a\/(?:macros\/[^/]+|[^/]+\/macros)|\/macros)\/s\/[^/]+\/exec$/.test(url.pathname)) {
     throw new Error('COHORT_API_URL must be a deployed Apps Script Web App /exec URL');
   }
-  installerSecret();
   return url.toString();
 }
 
@@ -78,8 +82,8 @@ function cohortFromPayload(payload) {
     registryKey,
     guildId,
     supervisorIds: payload.supervisorIds.map(String),
-    appsScriptUrl: validateInstallerBackend(),
-    apiKey: installerSecret(),
+    appsScriptUrl: payload.appsScriptUrl ? validateInstallerBackend(payload.appsScriptUrl) : validateInstallerBackend(),
+    apiKey: payload.apiKey || (process.env.COHORT_API_KEY || '').trim(),
     timezone: String(payload.timezone || process.env.COHORT_TIMEZONE || 'Asia/Dhaka'),
     channels: { ...payload.channels },
   });
@@ -94,6 +98,8 @@ function setupPayload(cohort) {
     supervisorIds: [...cohort.supervisorIds],
     timezone: cohort.timezone,
     channels: { ...cohort.channels },
+    appsScriptUrl: cohort.appsScriptUrl || '',
+    apiKey: cohort.apiKey || '',
   };
 }
 
@@ -145,7 +151,7 @@ async function saveSetupCapsule(client, cohort) {
 
 async function restoreSelfHostedCohort(client) {
   if (mode !== 'installer') return null;
-  validateInstallerBackend();
+  installerSecret();
   const restored = [];
   for (const guild of client.guilds.cache.values()) {
     const channels = await guild.channels.fetch();
@@ -216,15 +222,17 @@ async function ensurePrivateBotAdmin(client, guild, userId) {
   return channel;
 }
 
-function setupRows(includeAddCohort = false) {
+function setupRows(cohort, includeAddCohort = false) {
+  const isConnected = Boolean(cohort?.appsScriptUrl && cohort?.apiKey);
   const first = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`${PREFIX}:permissions`).setLabel('1 · Google permissions').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`${PREFIX}:connect-backend`).setLabel(isConnected ? '🔗 Reconnect Sheet / Key' : '🔗 Connect Sheet / Key').setStyle(isConnected ? ButtonStyle.Secondary : ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`${PREFIX}:channels`).setLabel('2 · Match channels').setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`${PREFIX}:sync`).setLabel('3 · Sync students').setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`${PREFIX}:verify`).setLabel('4 · Verify').setStyle(ButtonStyle.Success),
   );
   const second = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`${PREFIX}:explain`).setLabel('I need help').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`${PREFIX}:permissions`).setLabel('Setup guide').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`${PREFIX}:backend-test`).setLabel('Test connection').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`${PREFIX}:refresh`).setLabel('Retry / refresh').setStyle(ButtonStyle.Secondary),
   );
   if (includeAddCohort) {
@@ -236,23 +244,29 @@ function setupRows(includeAddCohort = false) {
 }
 
 function panelPayload(cohort) {
+  const isConnected = Boolean(cohort?.appsScriptUrl && cohort?.apiKey);
+  const backendLine = isConnected
+    ? `• **Google Sheet Backend:** ✅ Connected (\`${cohort.name}\`)`
+    : `• **Google Sheet Backend:** ⚠️ Not connected! Click **Connect Sheet / Key** below or run \`!connectsheet <URL> <KEY>\``;
   return {
     embeds: [{
       title: `JP ADMIN setup · ${cohort.name}`,
       description: [
-        'Complete these four private steps in order. You can safely retry any step.',
+        'Complete the setup steps below. You can safely retry any step.',
         '',
-        '**1. Google permissions** — authorize the copied Apps Script and test its Web App.',
+        backendLine,
+        '',
+        '**1. Connect Sheet / Key** — enter the Apps Script `/exec` URL and secret key for this server.',
         '**2. Match channels** — reuse existing channels first; create only missing channels.',
         '**3. Sync students** — capture every current non-bot, non-supervisor member, even without intake.',
         '**4. Verify** — check the backend, channel privacy, and show the final diagnostic commands.',
         '',
         'No setup action deletes a channel, Sheet tab, message history, or student record.',
       ].join('\n'),
-      color: 0x5865f2,
-      footer: { text: 'Secrets remain in Render and are never shown here.' },
+      color: isConnected ? 0x2ecc71 : 0x5865f2,
+      footer: { text: 'Each Discord server keeps its own independent Google Sheet backend.' },
     }],
-    components: setupRows(mode === 'multi'),
+    components: setupRows(cohort, mode === 'multi'),
     allowedMentions: { parse: [] },
   };
 }
@@ -262,13 +276,13 @@ function permissionsPayload() {
     embeds: [{
       title: 'Step 1 · Authorize Google and Apps Script',
       description: [
-        '1. Open the Google Sheet you copied for this cohort.',
+        '1. Open the Google Sheet you created for this cohort.',
         '2. Choose **Extensions → Apps Script**.',
-        '3. Confirm the complete `Code-v19-FINAL.gs` file is present and its `CONFIG` has your cohort name and the same private key you saved in Render.',
+        '3. Confirm the complete `Code-v19-FINAL.gs` file is present and its `CONFIG` has your cohort name and secret key.',
         '4. In the function list, choose **`authorizeAllRequiredServices`**, then press **Run**.',
         '5. Choose **Review permissions**, select your Google account, open **Advanced** if Google shows an unverified-app notice, and allow the requested access.',
         '6. Run **`setup`** once. Then choose **Deploy → New deployment → Web app**. Execute as **Me** and allow access to **Anyone**.',
-        '7. Put the final `/exec` Web App URL into Render as `COHORT_API_URL`. Do not paste the private key into Discord.',
+        '7. Copy the final `/exec` URL. Then click **Connect Sheet / Key** below or run `!connectsheet <URL> <KEY>`.',
         '',
         'When finished, press **Done — test connection**. A failed test is read-only and safe to retry.',
       ].join('\n'),
@@ -276,9 +290,9 @@ function permissionsPayload() {
     }],
     components: [
       new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`${PREFIX}:connect-backend`).setLabel('Connect Sheet / Key').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setLabel('Open Apps Script').setStyle(ButtonStyle.Link).setURL('https://script.google.com/home'),
-        new ButtonBuilder().setCustomId(`${PREFIX}:backend-test`).setLabel('Done — test connection').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId(`${PREFIX}:permissions-help`).setLabel('Could not understand').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`${PREFIX}:backend-test`).setLabel('Done — test connection').setStyle(ButtonStyle.Secondary),
       ),
     ],
     ephemeral: true,
@@ -287,6 +301,9 @@ function permissionsPayload() {
 }
 
 async function checkBackend(cohort) {
+  if (!cohort?.appsScriptUrl || !cohort?.apiKey) {
+    throw new Error('Google Apps Script backend is not connected yet. Click "Connect Sheet / Key" or run `!connectsheet <URL> <KEY>` in this channel.');
+  }
   const url = new URL(cohort.appsScriptUrl);
   url.searchParams.set('action', 'health');
   url.searchParams.set('key', cohort.apiKey);
@@ -374,7 +391,6 @@ async function openSelfHostedSetup(client, request) {
     return;
   }
 
-  validateInstallerBackend();
   const supervisorIds = ownerFirstSupervisorIds(guild.ownerId, [], userId);
   let channel;
   for (const supervisorId of supervisorIds) {
@@ -409,18 +425,81 @@ function registerSelfHostedSetup(client, options = {}) {
   });
 
   client.on('messageCreate', async message => {
-    if (message.author.bot || !/^!setup(?:\s+(?:guide|wizard))?$/i.test(message.content.trim())) return;
-    if (!message.guild) return;
-    try {
-      await openSelfHostedSetup(client, {
-        guild: message.guild,
-        userId: message.author.id,
-        member: message.member,
-        channelId: message.channelId,
-        respond: content => message.reply({ content, allowedMentions: { parse: [] } }),
-      });
-    } catch (error) {
-      await message.reply({ content: `Setup could not start: ${errorText(error)}`, allowedMentions: { parse: [] } });
+    if (message.author.bot || !message.guild) return;
+    const content = message.content.trim();
+
+    if (/^!setup(?:\s+(?:guide|wizard))?$/i.test(content)) {
+      try {
+        await openSelfHostedSetup(client, {
+          guild: message.guild,
+          userId: message.author.id,
+          member: message.member,
+          channelId: message.channelId,
+          respond: replyContent => message.reply({ content: replyContent, allowedMentions: { parse: [] } }),
+        });
+      } catch (error) {
+        await message.reply({ content: `Setup could not start: ${errorText(error)}`, allowedMentions: { parse: [] } });
+      }
+      return;
+    }
+
+    const connectMatch = content.match(/^!(?:connectsheet|setbackend)(?:\s+(\S+))?(?:\s+(.+))?$/i);
+    if (connectMatch) {
+      const cohort = cohorts.find(item => item.guildId === message.guild.id);
+      if (!cohort) {
+        await message.reply('Run `/setup` or `!setup` first to initialize this server.');
+        return;
+      }
+      if (message.channelId !== cohort.channels?.supervisor) {
+        await message.reply(`Run this command privately in <#${cohort.channels?.supervisor}>.`);
+        return;
+      }
+      if (!cohort.supervisorIds.includes(message.author.id) && String(message.guild.ownerId) !== String(message.author.id)) {
+        await message.reply('⛔ Only configured supervisors or server owner can connect the sheet backend.');
+        return;
+      }
+      const rawUrl = connectMatch[1];
+      const rawKey = connectMatch[2];
+      if (!rawUrl || !rawKey) {
+        await message.reply('Usage: `!connectsheet <Apps Script /exec URL> <Secret Key>`');
+        return;
+      }
+      try {
+        const appsScriptUrl = validateInstallerBackend(rawUrl);
+        const apiKey = rawKey.trim();
+        const result = await checkBackend({ appsScriptUrl, apiKey });
+        cohort.appsScriptUrl = appsScriptUrl;
+        cohort.apiKey = apiKey;
+        if (result.cohort && result.cohort !== 'unknown') {
+          cohort.name = result.cohort;
+        }
+        await saveSetupCapsule(client, cohort);
+
+        let centralSynced = false;
+        try {
+          const { syncCohortToCentral, getCentralSheetUrl } = require('./central-sheet');
+          const centralRef = getCentralSheetUrl() || process.env.CENTRAL_SHEET_URL || process.env.CENTRAL_SHEET_ID || '';
+          if (centralRef) {
+            const syncResult = await syncCohortToCentral(cohort, centralRef);
+            centralSynced = Boolean(syncResult && syncResult.synced);
+          }
+        } catch (_) {}
+
+        await message.reply({
+          content: [
+            `✅ **Successfully connected this server to Google Apps Script!**`,
+            `• **Cohort Name:** ${cohort.name}`,
+            `• **Backend Version:** ${result.version || 'unknown'}`,
+            `• **Central Sheet Sync:** ${centralSynced ? '✅ Synced to Central Directory' : 'Pending / Not configured'}`,
+            '',
+            `Next, click **2 · Match channels** in setup or run \`!syncmembers\` to import students.`,
+          ].join('\n'),
+          allowedMentions: { parse: [] },
+        });
+      } catch (err) {
+        await message.reply(`❌ Connection failed: ${errorText(err)}`);
+      }
+      return;
     }
   });
 
@@ -444,6 +523,54 @@ function registerSelfHostedSetup(client, options = {}) {
       }
       return;
     }
+
+    if (interaction.isModalSubmit() && interaction.customId === `${PREFIX}:connect:submit`) {
+      const cohort = cohorts.find(item => item.guildId === interaction.guildId);
+      if (!cohort) {
+        await interaction.reply({ content: 'Run `/setup` first to initialize this server.', ephemeral: true }).catch(() => {});
+        return;
+      }
+      const rawUrl = interaction.fields.getTextInputValue('url').trim();
+      const rawKey = interaction.fields.getTextInputValue('key').trim();
+      await interaction.deferReply({ ephemeral: true });
+      try {
+        const appsScriptUrl = validateInstallerBackend(rawUrl);
+        const apiKey = rawKey;
+        const result = await checkBackend({ appsScriptUrl, apiKey });
+        cohort.appsScriptUrl = appsScriptUrl;
+        cohort.apiKey = apiKey;
+        if (result.cohort && result.cohort !== 'unknown') {
+          cohort.name = result.cohort;
+        }
+        await saveSetupCapsule(client, cohort);
+
+        let centralSynced = false;
+        try {
+          const { syncCohortToCentral, getCentralSheetUrl } = require('./central-sheet');
+          const centralRef = getCentralSheetUrl() || process.env.CENTRAL_SHEET_URL || process.env.CENTRAL_SHEET_ID || '';
+          if (centralRef) {
+            const syncResult = await syncCohortToCentral(cohort, centralRef);
+            centralSynced = Boolean(syncResult && syncResult.synced);
+          }
+        } catch (_) {}
+
+        await interaction.editReply({
+          content: [
+            `✅ **Successfully connected this server to Google Apps Script!**`,
+            `• **Cohort Name:** ${cohort.name}`,
+            `• **Backend Version:** ${result.version || 'unknown'}`,
+            `• **Central Sheet Sync:** ${centralSynced ? '✅ Synced to Central Directory' : 'Pending / Not configured'}`,
+            '',
+            `Next, click **2 · Match channels** or run \`!syncmembers\` to import students.`,
+          ].join('\n'),
+          allowedMentions: { parse: [] },
+        });
+      } catch (err) {
+        await interaction.editReply({ content: `❌ Connection failed: ${errorText(err)}`, allowedMentions: { parse: [] } });
+      }
+      return;
+    }
+
     if (!interaction.isButton() || !interaction.customId?.startsWith(`${PREFIX}:`)) return;
     const cohort = configuredContext(interaction.guildId, interaction.channelId, interaction.user.id);
     if (!cohort) {
@@ -452,6 +579,35 @@ function registerSelfHostedSetup(client, options = {}) {
     }
     const action = interaction.customId.slice(PREFIX.length + 1);
     try {
+      if (action === 'connect-backend') {
+        const modal = new ModalBuilder()
+          .setCustomId(`${PREFIX}:connect:submit`)
+          .setTitle('Connect Sheet Backend')
+          .addComponents(
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('url')
+                .setLabel('Apps Script Web App /exec URL')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('https://script.google.com/macros/s/.../exec')
+                .setValue(cohort.appsScriptUrl || '')
+                .setRequired(true)
+                .setMaxLength(1000),
+            ),
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('key')
+                .setLabel('Apps Script Secret Key')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('CONFIG.SECRET_KEY from Code-v19-FINAL.gs')
+                .setValue(cohort.apiKey || '')
+                .setRequired(true)
+                .setMaxLength(1000),
+            ),
+          );
+        await interaction.showModal(modal);
+        return;
+      }
       if (action === 'permissions') {
         await interaction.reply(permissionsPayload());
         return;
