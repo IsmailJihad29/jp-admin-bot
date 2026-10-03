@@ -1,252 +1,175 @@
-# JP ADMIN — self-hosted Discord bootcamp assistant
+# 🚀 JP ADMIN — Self-Hosted Discord Bot & Cohort Automation
+
+JP ADMIN হলো একটি শক্তিশালী Discord বট ও গুগল শিট অটোমেশন সিস্টেম, যা বুটক্যাম্প এবং ট্রেনিং কোহর্টের স্টুডেন্টদের **দৈনিক অ্যাটেন্ডেন্স, গুগল শিট রোস্টার সিঙ্ক, জব ট্র্যাকিং, উইকলি পারফরম্যান্স রিপোর্ট, ডিসকর্ড রোল ম্যানেজমেন্ট এবং প্লেসমেন্ট অ্যানালিটিক্স** পরিচালনা করতে সাহায্য করে।
+
+এই রিপোজিটরিটি সম্পূর্ণ স্বাধীন এবং সেলফ-হোস্টেড। এটি সরাসরি আপনার **Discord Bot Application, Render Cloud Service, Google Sheet এবং Apps Script**-এর সাথে সংযুক্ত হয়ে কাজ করে।
+
+---
+
+## 📑 সূচিপত্র (Table of Contents)
+1. [প্রয়োজনীয় জিনিসপত্র (Prerequisites)](#-১-প্রয়োজনীয়-জিনিসপত্র)
+2. [ধাপ ১: Discord Bot তৈরি এবং সার্ভারে ইনভাইট](#-ধাপ-১-discord-bot-তৈরি-এবং-সার্ভারে-ইনভাইট)
+3. [ধাপ ২: Google Sheets ও Apps Script ব্যাকএন্ড সেটআপ](#-ধাপ-২-google-sheets-ও-apps-script-ব্যাকএন্ড-সেটআপ)
+4. [ধাপ ৩: Render-এ ক্লাউড ডিপ্লয়মেন্ট](#-ধাপ-৩-render-এ-ক্লাউড-ডিপ্লয়মেন্ট)
+5. [ধাপ ৪: Discord সার্ভারে বটকে সক্রিয় করা](#-ধাপ-৪-discord-সার্ভারে-বটকে-সক্রিয়-করা)
+6. [Placement Pulse ড্যাশবোর্ডের সাথে সংযোগ](#-placement-pulse-এর-সাথে-সংযোগ)
+7. [কমান্ড রেফারেন্স (Command Reference)](#-প্রয়োজনীয়-কমান্ড-তালিকা)
+8. [সাধারণ সমস্যা ও সমাধান (Troubleshooting)](#-সাধারণ-সমস্যা-ও-সমাধান)
+
+---
+
+## 🛠 ১. প্রয়োজনীয় জিনিসপত্র
+
+- একটি Discord অ্যাকাউন্ট (যাতে টার্গেট সার্ভারে Administrator পারমিশন আছে)।
+- একটি Google অ্যাকাউন্ট (কোহর্টের গুগল শিট ও Apps Script এর জন্য)।
+- একটি ফ্রি [GitHub](https://github.com) অ্যাকাউন্ট।
+- একটি ফ্রি [Render](https://render.com) অ্যাকাউন্ট।
+
+---
+
+## 🤖 ধাপ ১: Discord Bot তৈরি এবং সার্ভারে ইনভাইট
+
+### ১.১ Bot Application তৈরি ও Token নেওয়া:
+1. ব্রাউজারে [Discord Developer Portal](https://discord.com/developers/applications)-এ লগইন করুন।
+2. উপরে ডানপাশে **New Application** বাটনে ক্লিক করুন।
+3. নাম দিন (যেমন: `JP ADMIN Bot`) এবং **Create**-এ চাপ দিন।
+4. বামপাশের মেনু থেকে **"Bot"** ট্যাবে যান:
+   - **Reset Token**-এ ক্লিক করে **Yes, do it!** দিন।
+   - নিচে প্রদর্শিত লম্বা টোকেনটি **Copy** করে আপনার নোটপ্যাডে সংরক্ষণ করুন (এটি পরবর্তীতে Render-এর `DISCORD_TOKEN` হিসেবে লাগবে)।
+   - **PUBLIC BOT:** এটি `ON` রাখুন।
+   - ⚠️ **REQUIRES OAUTH2 CODE GRANT:** এটি অবশ্যই **`OFF` (বন্ধ)** রাখবেন।
+5. একটু নিচে স্ক্রল করে **Privileged Gateway Intents** সেকশনে এই ৩টি অন (টিক) করুন:
+   - ✅ **Presence Intent**
+   - ✅ **Server Members Intent** *(খুব জরুরি - স্টুডেন্ট রোস্টার সিঙ্ক করার জন্য)*
+   - ✅ **Message Content Intent** *(খুব জরুরি - টেক্সট কমান্ড শোনার জন্য)*
+6. নিচে সবুজ **Save Changes** বাটনে ক্লিক করুন।
+
+### ১.২ বটকে Discord সার্ভারে ইনভাইট করা:
+1. বামপাশের মেনু থেকে **"General Information"**-এ যান।
+2. **Application ID**-র পাশের **Copy** বাটনে ক্লিক করে আইডিটি কপি করুন।
+3. ব্রাউজারের নতুন ট্যাবে নিচের লিঙ্কে `YOUR_APPLICATION_ID` লেখাটি মুছে আপনার কপি করা আইডি বসিয়ে এন্টার দিন:
+   ```text
+   https://discord.com/oauth2/authorize?client_id=YOUR_APPLICATION_ID&permissions=8&scope=bot%20applications.commands
+   ```
+4. প্রদর্শিত উইন্ডো থেকে আপনার Discord সার্ভারটি নির্বাচন করুন এবং **Continue → Authorize** দিন।
+5. **রোল পজিশনিং (খুব গুরুত্বপূর্ণ):** 
+   - Discord সার্ভারে ঢুকে **Server Settings → Roles**-এ যান।
+   - `JP ADMIN Bot`-এর রোলটিকে ড্র্যাগ করে স্টুডেন্ট রোলগুলোর **উপরে** তুলে দিন, যাতে বট স্টুডেন্টদের রোল ম্যানেজ করতে পারে।
+
+---
+
+## 📊 ধাপ ২: Google Sheets ও Apps Script ব্যাকএন্ড সেটআপ
+
+1. [Google Sheets](https://sheets.google.com)-এ গিয়ে কোহর্টের জন্য একটি নতুন গুগল শিট তৈরি করুন।
+2. শিটের উপরের মেনু থেকে **Extensions → Apps Script**-এ ক্লিক করুন।
+3. ডিফল্ট কোড মুছে দিয়ে এই রিপোজিটরির [`Code-v19-FINAL.gs`](Code-v19-FINAL.gs) ফাইলের সম্পূর্ণ কোড কপি করে পেস্ট করুন।
+4. একদম উপরে লাইন ২০-২৪ এর `CONFIG` সেকশনে প্রয়োজনীয় তথ্য দিন:
+   ```javascript
+   const CONFIG = {
+     COHORT: 'Albatross B12', // আপনার কোহর্ট বা ব্যাচের নাম
+     SECRET_KEY: 'jp_admin_secure_secret_token_9876543210', // কমপক্ষে ৩২ অক্ষরের একটি গোপন পাসওয়ার্ড
+     TZ: 'Asia/Dhaka',
+     // বাকি অংশ যেমন আছে তেমনই থাকবে
+   ```
+5. উপরে **Save** (💾) আইকনে ক্লিক করুন।
+6. ফাংশন ড্রপডাউনে **`setup`** সিলেক্ট করে **Run** দিন।
+   - গুগল পারমিশন চাইলে: *Review Permissions → আপনার Google অ্যাকাউন্ট সিলেক্ট করুন → Advanced → Go to ... (unsafe) → Allow* দিন।
+7. উপরে ডানপাশের নীল **Deploy → New deployment**-এ ক্লিক করুন:
+   - গিয়ার (⚙️) আইকন থেকে **Web app** সিলেক্ট করুন।
+   - **Description:** `v1`
+   - **Execute as:** `Me`
+   - **Who has access:** `Anyone` *(অবশ্যই Anyone সিলেক্ট করতে হবে)*
+   - **Deploy** ক্লিক করুন।
+8. প্রদর্শিত **Web app URL** (যা `.../exec` দিয়ে শেষ হয়) কপি করে সংরক্ষণ করুন (এটি আপনার `COHORT_API_URL`)।
+
+---
+
+## ☁️ ধাপ ৩: Render-এ ক্লাউড ডিপ্লয়মেন্ট
+
+1. [Render Dashboard](https://dashboard.render.com)-এ যান এবং GitHub দিয়ে সাইন-ইন করুন।
+2. উপরে ডানপাশের **New + → Web Service**-এ ক্লিক করুন।
+3. আপনার গিটহাব রিপোজিটরিটি (`jp-admin-bot`) নির্বাচন করে **Connect** দিন।
+4. কনফিগারেশন সেটিংস:
+   - **Name:** `jp-admin-bot`
+   - **Runtime:** `Node`
+   - **Build Command:** `npm install`
+   - **Start Command:** `npm start`
+   - **Instance Type:** `Free`
+
+5. পেজটি একটু নিচে স্ক্রল করে **"Environment Variables"** সেকশনে ক্লিক করুন এবং নিচের ভেরিয়েবলগুলো যোগ করুন:
+
+| Variable Name (Key) | Value (মান) | বিবরণ |
+| :--- | :--- | :--- |
+| **`DISCORD_TOKEN`** | `MTI...` | ধাপ ১ এ পাওয়া Bot Token |
+| **`COHORT_NAME`** | `Albatross B12` | কোহর্ট বা ব্যাচের নাম |
+| **`COHORT_GUILD_ID`** | `1234567890...` | আপনার Discord সার্ভারের Server ID |
+| **`COHORT_API_URL`** | `https://script.google.com/macros/s/.../exec` | ধাপ ২ এ পাওয়া Apps Script URL |
+| **`COHORT_API_KEY`** | `jp_admin_secure_secret_token_9876543210` | ধাপ ২ এ `CONFIG.SECRET_KEY`-তে দেওয়া পাসওয়ার্ড |
+| **`COHORT_SUPERVISOR_IDS`** | `9876543210...` | আপনার Discord User ID |
+| **`COHORT_TIMEZONE`** | `Asia/Dhaka` | টাইমজোন |
+| **`CENTRAL_SHEET_URL`** | *(ঐচ্ছিক)* | সেন্ট্রাল মাস্টার গুগল শিটের লিংক |
 
-JP ADMIN helps mentors operate attendance, job tracking, weekly performance reports, leave requests, onboarding, workshops, outreach, and student records from Discord.
+6. নিচে **"Deploy Web Service"** বাটনে ক্লিক করুন!
+7. ২-৩ মিনিটের মধ্যে Render কনসোলে `Bot logged in as ...` এবং `Ready!` দেখতে পাবেন।
 
-This repository is the safe self-hosted edition. Your copy runs with **your Discord bot, your Render account, your Google Sheet, and your Apps Script deployment**. It does not connect to another mentor's server or data.
+---
 
-No programming experience is required. Keep this page open and complete each checkpoint in order.
+## ⚡ ধাপ ৪: Discord সার্ভারে বটকে সক্রিয় করা
 
-**Prefer a printable guide?** Open or download the illustrated [JP ADMIN Self-Hosted Installation Guide (PDF)](output/pdf/JP-ADMIN-Self-Hosted-Installation-Guide.pdf). It provides the complete installation in 17 beginner-friendly pages with screenshots, success checkpoints, and a troubleshooting table.
+বট লাইভ হওয়ার সাথে সাথে এটি আপনার Discord সার্ভারে স্বয়ংক্রিয়ভাবে একটি প্রাইভেট চ্যানেল তৈরি করবে: **`#bot-admin`**।
 
-> **Safety promise:** setup reuses existing Discord channels before creating missing ones. It does not delete existing channels, messages, Sheet tabs, student rows, or tracker history. Current Discord students can be synchronized even if they never completed intake.
+`#bot-admin` চ্যানেলে গিয়ে নিচের কমান্ডগুলো রান করুন:
 
-## What you need
+1. **`!setup`** বা **`/setup`**
+   - এটি স্বয়ংক্রিয়ভাবে সার্ভারের চ্যানেল পারমিশন ও রোল সেটআপ সম্পন্ন করবে।
+2. **`!syncmembers`**
+   - Discord সার্ভারের সমস্ত বর্তমান মেম্বারকে স্বয়ংক্রিয়ভাবে গুগল শিটের `Bot_Map` এবং `All Data` ট্যাবে সিঙ্ক করে নেবে।
+3. **`!doctor`**
+   - বটের স্বাস্থ্য, গুগল শিট কানেকশন ও পারমিশন সবকিছু ঠিক আছে কিনা যাচাই করতে এটি ব্যবহার করুন।
+4. **`!centralsheet set <Google Sheet URL>`** *(ঐচ্ছিক)*
+   - একাধিক কোহর্ট ট্র্যাক করার জন্য সেন্ট্রাল মাস্টার শিট লিঙ্ক সেট করুন।
 
-- A Discord account that can administer the target server
-- A Google account for the cohort Sheet
-- Free GitHub and Render accounts
-- About 30–45 minutes for the first installation
+---
 
-Never place a Discord bot token or Apps Script secret in GitHub, Discord messages, screenshots, issues, or support chats.
+## 🎯 Placement Pulse-এর সাথে সংযোগ
 
-## Checkpoint 1 — create your private copy of this repository
+বট একবার ডিপ্লয় হয়ে গুগল শিটে ডেটা সিঙ্ক করা শুরু করলে:
+1. আপনার কোহর্ট গুগল শিটের লিংকটি কপি করুন (বা ব্রাউজার থেকে নির্দিষ্ট ট্যাবের লিংক, যেমন `#gid=...`)।
+2. গুগল শিটের শেয়ারিং অপশনে **"Anyone with the link can view"** অন নিশ্চিত করুন।
+3. [Placement Pulse](http://localhost:3000/projects) ড্যাশবোর্ডে গিয়ে **"+ Create Project"**-এ ক্লিক করে গুগল শিট লিংকটি পেস্ট করে সাবমিট করুন।
+4. চোখের পলকে Discord বটের সমস্ত স্টুডেন্ট, অ্যাটেন্ডেন্স ও প্রোফাইল ডেটা Placement Pulse ড্যাশবোর্ডে লাইভ চলে আসবে!
 
-1. At the top of this GitHub page choose **Use this template → Create a new repository**.
-2. Choose your account as owner.
-3. Name it something like `jp-admin-my-cohort`.
-4. Select **Private** and create the repository.
-5. Keep that new private repository open. Render will deploy from it.
+---
 
-If **Use this template** is unavailable, choose **Code → Download ZIP** and follow the GitHub Desktop upload instructions in [`SELF_HOSTED_SETUP.md`](SELF_HOSTED_SETUP.md).
+## ⌨️ প্রয়োজনীয় কমান্ড তালিকা
 
-![GitHub new repository form](docs/screenshots/github-new-private-repository.png)
+| কমান্ড | বিবরণ | কার জন্য |
+| :--- | :--- | :--- |
+| `!setup` | সার্ভার ও চ্যানেল কনফিগারেশন সেটআপ | Supervisor / Admin |
+| `!syncmembers` | Discord সার্ভার মেম্বারদের গুগল শিটে সিঙ্ক করা | Supervisor / Admin |
+| `!openform` | ডেইলি অ্যাটেন্ডেন্স ফর্ম ওপেন করা | Supervisor / Admin |
+| `!closeform` | ডেইলি অ্যাটেন্ডেন্স ফর্ম বন্ধ করা | Supervisor / Admin |
+| `!formstatus` | বর্তমান ফর্ম লিংক ও স্ট্যাটাস দেখা | সবাই |
+| `!doctor` | সিস্টেম ডায়াগনস্টিক ও কানেক্টিভিটি টেস্ট | Supervisor / Admin |
+| `!rtbr` | Right To Be Referred রুলস ও র‍্যাংকিং | Supervisor / Student |
+| `!centralsheet` | সেন্ট্রাল মাস্টার শিট স্ট্যাটাস ও সিঙ্ক | Supervisor / Admin |
 
-Checkpoint complete when `render.yaml` is visible at the top level of your private repository.
+---
 
-## Checkpoint 2 — create the Discord application
+## ❓ সাধারণ সমস্যা ও সমাধান (Troubleshooting)
 
-1. Open the [Discord Developer Portal](https://discord.com/developers/applications).
-2. Choose **New Application** and name it `JP ADMIN - Your Cohort`.
-3. Open **Bot** and choose **Reset Token**. Copy the token to a private temporary note; Discord shows it only once.
-4. On the same page enable:
-   - **Server Members Intent**
-   - **Message Content Intent**
-5. Save changes.
+### ১. "Integration requires code grant" এরর দেখাচ্ছে?
+👉 Discord Developer Portal-এ **Bot** ট্যাবে যান এবং নিশ্চিত করুন **"REQUIRES OAUTH2 CODE GRANT"** অপশনটি **`OFF` (বন্ধ)** আছে।
 
-![Discord application list](docs/screenshots/discord-developer-login.png)
+### ২. বট মেসেজের উত্তর দিচ্ছে না?
+👉 Discord Developer Portal-এ **Bot** ট্যাবে গিয়ে **"Message Content Intent"** অন আছে কিনা চেক করুন।
 
-The token is a password. If it is ever posted or committed, reset it immediately and update only `DISCORD_TOKEN` in Render.
+### ৩. শিটে ডেটা যাচ্ছে না বা ৪০১ / Unauthorized এরর আসছে?
+👉 গুগল শিটের `Code-v19-FINAL.gs`-এর `CONFIG.SECRET_KEY` এবং Render-এর `COHORT_API_KEY` হুবহু এক আছে কিনা মিলিয়ে দেখুন।
 
-## Checkpoint 3 — invite the bot as Administrator
+### ৪. স্টুডেন্ট রোস্টার সিঙ্ক হচ্ছে না?
+👉 **Server Members Intent** অন আছে কিনা এবং Discord সার্ভারে বটের রোলটি স্টুডেন্ট রোলের উপরে আছে কিনা নিশ্চিত করুন।
 
-1. In the Discord Developer Portal open **Installation**.
-2. Enable **Guild Install**.
-3. Under **Guild Install scopes**, include **both** `bot` and `applications.commands`.
-4. Under permissions select **Administrator**.
-5. Copy/open the Discord-provided install link.
-6. Select the correct server and approve the invitation.
-7. In Discord open **Server Settings → Roles** and move the JP ADMIN bot role above the student identity, readiness, active/inactive, and hired roles it will manage.
+---
 
-If the portal does not show a usable install link, open **OAuth2 → URL Generator**, tick both `bot` and `applications.commands`, tick **Administrator**, then open the generated URL. The equivalent URL shape is:
-
-```text
-https://discord.com/oauth2/authorize?client_id=YOUR_APPLICATION_ID&permissions=8&scope=bot%20applications.commands
-```
-
-Replace only `YOUR_APPLICATION_ID` with the public Application ID from **General Information**. Never put the bot token in a URL.
-
-![Discord Guild Install settings](docs/screenshots/discord-administrator-install.png)
-
-Administrator is needed for safe channel matching, private permission repair, role management, pinned panels, and scheduled messages. Discord role hierarchy still applies even to an Administrator bot.
-
-## Checkpoint 4 — deploy your private repository on Render
-
-1. Open [Render Blueprints](https://dashboard.render.com/blueprints).
-2. Choose **New Blueprint Instance** and connect your private repository.
-3. Render reads `render.yaml` and asks for `DISCORD_TOKEN`.
-4. Paste the token only into Render's secret field and create the Blueprint.
-5. Wait for the service status to become **Live**.
-6. Open `https://YOUR-SERVICE.onrender.com/health`. It must return `OK` with HTTP 200.
-
-![Render Blueprint explanation](docs/screenshots/render-blueprint.png)
-
-This Blueprint creates a free web service, generates `COHORT_API_KEY`, and enables `JP_INSTALLER_MODE`. The placeholder Apps Script URL is expected at this stage.
-
-### About Render's free plan
-
-Render supports `plan: free` for web-service Blueprints. Free services can sleep after an idle period, take time to wake, use an ephemeral local filesystem, and share the workspace's monthly free-instance allowance. Cohort data is durable in Google Sheets/Apps Script, but continuous bot availability is more reliable on an always-on paid instance.
-
-![Render free-service documentation](docs/screenshots/render-free-service.png)
-
-## Checkpoint 5 — open the private Discord setup assistant
-
-1. When the Render service is Live, type `/setup` in your Discord server and select the JP ADMIN command. `!setup` is a text-command fallback.
-2. JP ADMIN reuses an existing `#bot-admin` channel or creates it if missing.
-3. It repairs the channel so ordinary members cannot see it.
-4. Continue only in private `#bot-admin`.
-
-The panel has four buttons:
-
-1. **Google permissions**
-2. **Match channels**
-3. **Sync students**
-4. **Verify**
-
-Use **Retry / refresh** after correcting a failed checkpoint. Repeating a failed setup step does not delete data.
-
-The server owner is automatically saved as the permanent recovery supervisor. If another administrator starts setup, that administrator is added too. After the Google connection passes, the owner can appoint mentors in private `#bot-admin` with `!supervisor add @mentor`; list them with `!supervisor list`. The server owner cannot be removed, preventing a supervisor blackout.
-
-If `/setup` is missing, reinstall from the OAuth URL with **both** scopes. If `/setup` responds but setup fails, read its private error. If only `!setup` is silent, enable **Message Content Intent** and restart Render. Also verify Render is Live and the bot role has Administrator.
-
-## Checkpoint 6 — install and authorize Apps Script
-
-1. Create or open the cohort Google Sheet. Existing student rows can remain.
-2. Choose **Extensions → Apps Script**.
-3. Replace only the empty starter function with the complete contents of [`Code-v19-FINAL.gs`](Code-v19-FINAL.gs).
-4. Near the top of the Apps Script file edit only:
-   - `COHORT`: your cohort name
-   - `TZ`: your timezone, such as `Asia/Dhaka`
-   - `SECRET_KEY`: the generated `COHORT_API_KEY` value from Render **Environment**
-5. Save.
-6. Select `authorizeAllRequiredServices` in the function selector and choose **Run**.
-7. Review and allow the requested Google permissions. Use **Advanced** if Google shows the normal unverified-project notice for your personal script.
-
-![Apps Script authorization helper](docs/screenshots/apps-script-authorize.png)
-
-The helper checks Spreadsheet, Forms, triggers, Mail/Gmail access, and outbound requests. It sends no email and deletes no data.
-
-Then:
-
-1. Run the Apps Script function `setup` once.
-2. Choose **Deploy → New deployment → Web app**.
-3. Set **Execute as: Me** and **Who has access: Anyone**.
-4. Deploy and copy the final URL ending in `/exec`.
-5. In Render open the service's **Environment** page.
-6. Replace `COHORT_API_URL` with the `/exec` URL and save.
-7. Wait for Render to restart and return to **Live**.
-
-For later Apps Script updates, edit the existing Web App deployment to use a new version. Do not create a new public URL unnecessarily.
-
-## Checkpoint 7 — complete the Discord buttons
-
-Return to private `#bot-admin`, run `/setup` (or `!setup`), and complete the four buttons from left to right:
-
-1. **Google permissions** tests the Web App connection.
-2. **Match channels** reuses configured or recognized existing channels and creates only missing standard channels.
-3. **Sync students** captures current non-bot, non-supervisor server members even without intake. Unverified members receive stable provisional identities until their private profiles are completed.
-4. **Verify** checks the backend and protected-channel permissions.
-
-Finish with:
-
-```text
-!automation starter
-!automation
-!doctor
-!checkperms
-```
-
-`!automation starter` is the safe opening-day preset. It keeps quiet essentials
-(attendance, job tracking, and content sync) enabled while holding noisy
-programmes. Dedicated outreach, interview-update, workshop, RTBR, discipline,
-and group-activity channels are hidden from ordinary students until their
-matching automation is started. Core channels such as rules, welcome,
-discussion, resources, resume updates, job hunting, and mentor channels remain
-available. Existing channels and data are never deleted.
-
-Students admitted through the web intake receive their location, availability,
-work-mode, English, and skill roles from that submission. The bot asks them only
-to accept the rules; it shows the private onboarding questionnaire only when
-required intake role data is genuinely missing. A delayed backend write is
-rechecked automatically before the fallback is offered.
-
-```text
-!checkperms
-!doctor
-!syncmembers
-```
-
-These diagnostics suppress mentions and do not ping students. Required backend, permissions, roster, and schedule checks should pass. Optional Groq/AI checks can remain disabled if you intentionally did not add an AI key.
-
-## Checkpoint 8 — start normal cohort operation
-
-Open [`MENTOR_OPERATIONS_GUIDE.md`](MENTOR_OPERATIONS_GUIDE.md) before posting student-facing reports. It provides the full attendance, jobs, leaderboard, leave, and recovery workflows.
-
-Daily essentials:
-
-| Purpose | Start with | Important effect |
-| --- | --- | --- |
-| Health | `!doctor` | Private; no student ping |
-| Permissions | `!checkperms` | Private; no student ping |
-| Students | `!syncmembers` | Updates durable roster/tracking rows |
-| Profile roles | `!rolerepair [#channel]` | Repairs saved roles; mentions only students missing required role data |
-| Attendance | `!formstatus`, then `!openform` / `!closeform` | Open/close posts are student-facing |
-| Job trackers | `!checkjobsheets YYYY-MM-DD` | Private read-only audit; no ping/write |
-| Combined readiness | `!checkpipelines YYYY-MM-DD` | Private diagnostic |
-| Leave review | `!openleaves` | Decisions notify only the requesting student |
-| Weekly report | `!weeklyreport` | Posts the performance leaderboard |
-| Settings | `!control` | Private overview |
-
-Role profiles are independent: `Division · ...`, Dhaka-only `Dhaka Area · ...`,
-availability, work mode, English level, and one role per honestly selected skill.
-The web intake shows the required Dhaka-area question only after Dhaka is
-selected. Existing members can use the private Discord questionnaire when data
-is missing; `!rolerepair #discussion` processes saved answers sequentially and
-rementions only the remaining incomplete students once after two hours. It does
-not delete legacy roles, channels, messages, or Sheet data.
-
-Weekly RTBR qualification is also a role. Use `!rtbr top 10`, `!rtbr days 7`,
-and `!rtbr time 20:00` in private `#bot-admin`; the weekly run adds the role to
-the current qualifiers and removes it from members outside the configured top
-quantity.
-
-All 142 commands are categorized in [`MENTOR_COMMAND_REFERENCE.md`](MENTOR_COMMAND_REFERENCE.md). The running bot's private `!help` command is the authoritative command center.
-
-## Updating your copy later
-
-This public repository is a release source; your private repository owns your deployment.
-
-- For a small update, download the new release ZIP, copy the changed source files into your private repository, review them, commit to `main`, and push. Render redeploys automatically.
-- Do not overwrite your Render environment values or Apps Script `CONFIG` secrets.
-- When `Code-v19-FINAL.gs` changes, paste the updated code and update the existing Web App deployment to a new version while keeping its `/exec` URL unchanged.
-- Run `!doctor`, `!checkperms`, and the relevant private audit after an update.
-
-## Troubleshooting
-
-| Symptom | Safe recovery |
-| --- | --- |
-| Bot offline | Check Render **Live**, `/health`, then Render logs |
-| Bot is online but `/setup` is missing | Reinstall with both `bot` and `applications.commands` scopes; wait up to one minute and reopen Discord |
-| `/setup` says you are not a supervisor | The Discord server owner must run `/setup`; owner access repairs itself, then use `!supervisor add @mentor` |
-| `!setup` is silent but `/setup` works | Enable Message Content Intent in the Developer Portal and restart Render |
-| Discord login error | Reset the Discord token and replace only `DISCORD_TOKEN` in Render |
-| `!setup` ignored | Enable both privileged intents and verify Administrator/role hierarchy |
-| Apps Script test fails | Verify `/exec`, **Anyone** access, and the matching secret |
-| Existing students missing | Enable Server Members Intent, then run `!syncmembers` privately |
-| Location/skill roles missing | Run `!doctor onboarding`, then `!rolerepair [#channel]`; move the bot role higher if assignment fails |
-| Attendance mismatch | `!checkattendance` → `!repairattendance` → recheck |
-| Job count mismatch | `!checkjobsheets <date>` and verify the tracker tab/date; never delete history |
-| Channel issue | `!checkperms` → `!repairpermissions`; do not delete channels |
-| Duplicate public output | Stop the relevant automation in `!control`, inspect the schedule, and avoid rerunning the public command |
-
-## Privacy and support
-
-- Never open a GitHub issue containing tokens, keys, student names, email addresses, phone numbers, resumes, Sheet exports, or private Discord screenshots.
-- Gender and study-stage onboarding answers remain private and never belong in public reports.
-- Diagnostics use deliberate mention suppression; commands documented as student-facing should be used intentionally.
-- If a secret is exposed, rotate it first. Deleting a GitHub message or issue is not enough.
-
-Read [`SECURITY.md`](SECURITY.md) before reporting a problem. For code details, see [`ARCHITECTURE.md`](ARCHITECTURE.md). For complete setup alternatives, see [`SELF_HOSTED_SETUP.md`](SELF_HOSTED_SETUP.md).
-
-## License
-
-JP ADMIN self-hosted is available under the [MIT License](LICENSE).
+Developed with ❤️ for **JP Bootcamp & Placement Operations Automation**.
