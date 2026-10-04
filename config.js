@@ -192,10 +192,17 @@ const isolatedCohort = isolatedMode ? cohortDefaults({
 
 // Kept in a separate file so the mentor ZIP can omit production-only IDs.
 // Installer mode never loads or requires this module.
-const legacyEjp = installerMode ? null : require('./legacy-cohort');
+let legacyEjp = null;
+if (!installerMode) {
+  try {
+    legacyEjp = require('./legacy-cohort');
+  } catch {
+    legacyEjp = null;
+  }
+}
 
-const cohorts = registryCohorts || (isolatedCohort ? [isolatedCohort] : installerMode ? [] : [legacyEjp]);
-const mode = registryCohorts ? 'multi' : isolatedCohort ? 'isolated' : installerMode ? 'installer' : 'legacy';
+const cohorts = registryCohorts || (isolatedCohort ? [isolatedCohort] : (installerMode || !legacyEjp) ? [] : [legacyEjp]);
+const mode = registryCohorts ? 'multi' : isolatedCohort ? 'isolated' : (installerMode || !legacyEjp) ? 'installer' : 'legacy';
 
 function findCohort(guildId) {
   return cohorts.find(cohort => cohort.guildId === guildId);

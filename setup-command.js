@@ -19,24 +19,34 @@ const { applyStarterPreset } = require('./automations');
 const { syncAutomationChannelVisibility } = require('./channel-visibility');
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-// name -> { key, privacy }
+// name -> { key, category, privacy }
 const STANDARD_CHANNELS = [
-  { name: '👋│welcome', key: 'welcome', aliases: ['welcome-to-the-bootcamp', 'welcome-to-bootcamp', 'bootcamp-welcome', 'welcome'], lockedPosting: true },
-  { name: '📜│rules', key: 'rules', aliases: ['rules-and-regulations', 'rules-and-regulation', 'rules-regulations', 'server-rules', 'rules'], lockedPosting: true },
-  { name: '💬│discussion', key: 'discussion', aliases: ['discussion', 'attendance'] },
-  { name: '🤖│bot-admin', key: 'supervisor', aliases: ['bot-admin', 'admin'], private: true },
-  { name: '🎉│successfully-hired', key: 'hired', aliases: ['successfully-hired', 'hired'], lockedPosting: true },
-  { name: '📨│outreach-update', key: 'outreach', aliases: ['outreach-update', 'outreach-updates', 'outreach'] },
-  { name: '🎯│interview-update', key: 'interviewUpdates', aliases: ['interview-update', 'interview-updates'] },
-  { name: '📝│job-task-update', key: 'jobTaskUpdates', aliases: ['job-task-update', 'job-task-updates', 'task-update', 'task-updates', 'job-tasks', 'job-task'] },
-  { name: '💼│job-tracking-sheet', key: 'jobTracking', aliases: ['job-tracking-sheet', 'job-tracking'] },
-  { name: '🏆│champion-of-the-week', key: 'rtbr', aliases: ['champion-of-the-week', 'champions', 'right-to-be-referred', 'rtbr'], lockedPosting: true },
-  { name: '📢│automation-log', key: 'automationLog', aliases: ['automation-announcement', 'automation-log'], lockedPosting: true },
-  { name: '📚│resources', key: 'resources', aliases: ['resources'] },
-  { name: '⚠️│warning', key: 'warning', aliases: ['warning', 'warnings'], lockedPosting: true },
-  { name: '🚨│emergency', key: 'emergency', aliases: ['emergency'], lockedPosting: true },
-  { name: '🌴│leave-requests', key: 'issues', aliases: ['issues', 'issue', 'leave-requests', 'leave-request'] },
-  { name: '🚫│eliminated-students', key: 'eliminated', aliases: ['eliminated-students', 'eliminated-student', 'inactive-students'], lockedPosting: true },
+  // MENTOR Zone
+  { name: '👋│welcome', key: 'welcome', category: 'MENTOR Zone', aliases: ['welcome-to-the-bootcamp', 'welcome-to-bootcamp', 'bootcamp-welcome', 'welcome'], lockedPosting: true },
+  { name: '📜│rules', key: 'rules', category: 'MENTOR Zone', aliases: ['rules-and-regulations', 'rules-and-regulation', 'rules-regulations', 'server-rules', 'rules'], lockedPosting: true },
+  { name: '🔗│basecamp-meet-link', key: 'meetLink', category: 'MENTOR Zone', aliases: ['basecamp-meet-link', 'basecamp-meet', 'meet-link', 'basecamp-link'], lockedPosting: true },
+  { name: '📢│announcements', key: 'automationLog', category: 'MENTOR Zone', aliases: ['announcements', 'announcments', 'announcement', 'automation-announcement', 'automation-log'], lockedPosting: true },
+  { name: '📋│daily-task', key: 'dailyTasks', category: 'MENTOR Zone', aliases: ['daily-task', 'daily-tasks', 'daily-task-updates'], lockedPosting: true },
+  { name: '🚨│emergency-mentions', key: 'emergency', category: 'MENTOR Zone', aliases: ['emergency-mentions', 'emergency-mention', 'emergency'], lockedPosting: true },
+  { name: '🤝│1on1-support', key: 'oneOnOneSupport', category: 'MENTOR Zone', aliases: ['1on1-support', 'on1-support', '1on1-supports', 'one-on-one-support', '1-on-1-support', 'support'] },
+  { name: '🤖│jp-admin', key: 'supervisor', category: 'MENTOR Zone', aliases: ['jp-admin', 'bot-admin', 'admin', 'supervisor'], private: true },
+  { name: '👥│cr-discussion', key: 'crDiscussion', category: 'MENTOR Zone', aliases: ['cr-discussion', 'cr-discussions', 'cr-chat'], private: true },
+
+  // Student zone
+  { name: '💬│student-discussion', key: 'discussion', category: 'Student zone', aliases: ['student-discussion', 'studetn-discussion', 'discussion', 'attendance'] },
+  { name: '🎯│interview-update', key: 'interviewUpdates', category: 'Student zone', aliases: ['interview-update', 'interview-updates'] },
+  { name: '📝│job-task-update', key: 'jobTaskUpdates', category: 'Student zone', aliases: ['job-task-update', 'job-task-updates', 'task-update', 'task-updates', 'job-tasks', 'job-task'] },
+  { name: '💼│job-tracking-sheet', key: 'jobTracking', category: 'Student zone', aliases: ['job-tracking-sheet', 'job-trackking-sheet', 'job-tracking'] },
+  { name: '🏆│champion-of-the-week', key: 'rtbr', category: 'Student zone', aliases: ['champion-of-the-week', 'chapion-of-the-week', 'champions', 'right-to-be-referred', 'rtbr'], lockedPosting: true },
+  { name: '🌴│leave-requests', key: 'issues', category: 'Student zone', aliases: ['leave-requests', 'leave-request', 'issues', 'issue'] },
+  { name: '🚫│eliminated-students', key: 'eliminated', category: 'Student zone', aliases: ['eliminated-students', 'eliminated-student', 'inactive-students', 'eliminated'], lockedPosting: true },
+  { name: '💼│job-opportunities', key: 'jobPosts', category: 'Student zone', aliases: ['job-opportunities', 'job-opurtunites', 'job-opportunity', 'job-posts', 'job-post'] },
+  { name: '📄│resume-needed', key: 'resumes', category: 'Student zone', aliases: ['resume-needed', 'resume-updates', 'resumes', 'resume'], lockedPosting: true },
+  { name: '📚│important-resources', key: 'resources', category: 'Student zone', aliases: ['important-resources', 'resources'] },
+
+  // FUN & CHILL
+  { name: '🎉│successfully-hired', key: 'hired', category: 'FUN & CHILL', aliases: ['successfully-hired', 'hired'] },
+  { name: '🎭│meme-verse', key: 'memes', category: 'FUN & CHILL', aliases: ['meme-verse', 'meme-of-madness', 'memes', 'meme-madness', 'fun-and-chill'] },
 ];
 
 function permissionOverwrites(spec, guild, client, cohort) {
@@ -128,13 +138,27 @@ async function filterResolvableOverwrites(overwrites, guild, client) {
   return { overwrites: resolved, warnings };
 }
 
+function matchCategory(existing, name) {
+  const cleanTarget = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!cleanTarget) return null;
+  const items = typeof existing.find === 'function' ? existing : Array.from(existing.values?.() || []);
+  const findFn = items.find ? items.find.bind(items) : Array.prototype.find.bind(items);
+  return findFn(c =>
+    c &&
+    c.type === ChannelType.GuildCategory &&
+    String(c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '') === cleanTarget
+  ) || null;
+}
+
 function findStandardChannel(existing, spec, cohort) {
   const acceptedNames = [spec.name, ...(spec.aliases || [])].map(norm);
   const configuredRaw = cohort.channels?.[spec.key]
-    ? existing.get(cohort.channels[spec.key])
+    ? existing.get?.(cohort.channels[spec.key])
     : null;
   const configured = configuredRaw?.type === ChannelType.GuildText ? configuredRaw : null;
-  return configured || existing.find(
+  const items = typeof existing.find === 'function' ? existing : Array.from(existing.values?.() || []);
+  const findFn = items.find ? items.find.bind(items) : Array.prototype.find.bind(items);
+  return configured || findFn(
     c => c && c.type === ChannelType.GuildText && acceptedNames.includes(norm(c.name)),
   );
 }
@@ -186,6 +210,22 @@ async function removeStandardSupervisorPermissions(guild, cohort, supervisorId) 
   return { removed, failed };
 }
 
+async function unlockPostingIfRestricted(channel, guild) {
+  if (!channel?.permissionOverwrites?.cache || typeof channel.permissionOverwrites?.edit !== 'function') return;
+  const everyoneRole = guild.roles?.everyone;
+  if (!everyoneRole) return;
+  const overwrite = channel.permissionOverwrites.cache.get(everyoneRole.id);
+  if (overwrite?.deny?.has?.(PermissionFlagsBits.SendMessages)) {
+    try {
+      await channel.permissionOverwrites.edit(everyoneRole, {
+        SendMessages: null,
+      }, { reason: 'JP ADMIN open posting allowed' });
+    } catch {
+      // non-fatal
+    }
+  }
+}
+
 async function ensureStandardChannels(client, cohort, guild) {
   const existing = await guild.channels.fetch();
   const created = [];
@@ -194,11 +234,44 @@ async function ensureStandardChannels(client, cohort, guild) {
   const permissionWarnings = new Set();
   cohort.channels = cohort.channels || {};
 
+  // Find or create category headers for structured channels
+  const categoryNames = [...new Set(STANDARD_CHANNELS.map(s => s.category).filter(Boolean))];
+  const categoryMap = new Map();
+
+  for (const catName of categoryNames) {
+    let cat = matchCategory(existing, catName);
+    if (!cat && typeof guild.channels?.create === 'function') {
+      try {
+        cat = await guild.channels.create({
+          name: catName,
+          type: ChannelType.GuildCategory,
+        });
+        if (cat) {
+          existing.set?.(cat.id, cat);
+          await sleep(400);
+        }
+      } catch (err) {
+        failed.push(`Category ${catName}: ${err.message}`);
+      }
+    }
+    if (cat) {
+      categoryMap.set(catName, cat.id);
+    }
+  }
+
   for (const spec of STANDARD_CHANNELS) {
+    const categoryId = spec.category ? categoryMap.get(spec.category) : undefined;
     const match = findStandardChannel(existing, spec, cohort);
     if (match) {
       cohort.channels[spec.key] = match.id;
       reused.push(`#${match.name} → ${spec.key}`);
+      if (categoryId && match.parentId !== categoryId && typeof match.setParent === 'function') {
+        try {
+          await match.setParent(categoryId, { lockPermissions: false });
+        } catch {
+          // non-fatal if category parent could not be updated
+        }
+      }
       if (spec.private || spec.lockedPosting) {
         try {
           const result = await repairPermissions(match, spec, guild, client, cohort);
@@ -206,6 +279,8 @@ async function ensureStandardChannels(client, cohort, guild) {
         } catch (err) {
           failed.push(`${match.name} permissions: ${err.message}`);
         }
+      } else {
+        await unlockPostingIfRestricted(match, guild);
       }
       continue;
     }
@@ -220,10 +295,11 @@ async function ensureStandardChannels(client, cohort, guild) {
       const channel = await guild.channels.create({
         name: spec.name,
         type: ChannelType.GuildText,
+        parent: categoryId || undefined,
         permissionOverwrites: resolution.overwrites.length ? resolution.overwrites : undefined,
       });
       cohort.channels[spec.key] = channel.id;
-      existing.set(channel.id, channel);
+      existing.set?.(channel.id, channel);
       created.push(spec.name);
       await sleep(600);
     } catch (err) {

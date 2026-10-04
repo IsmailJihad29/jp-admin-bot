@@ -105,3 +105,64 @@ test('removing a supervisor revokes their existing standard private overwrite', 
   }]);
   assert.deepEqual(result, { removed: ['#bot-admin'], failed: [] });
 });
+
+test('ensureStandardChannels creates categories and assigns channels to their parent categories', async () => {
+  const createdChannels = [];
+  const createdCategories = [];
+  const reparented = [];
+  let nextId = 100;
+
+  const existing = new Collection();
+  const guild = {
+    channels: {
+      fetch: async () => existing,
+      create: async (spec) => {
+        const id = `ch-${++nextId}`;
+        const ch = {
+          id,
+          name: spec.name,
+          type: spec.type,
+          parentId: spec.parent || null,
+          permissionOverwrites: { edit: async () => {} },
+          setParent: async (pid) => {
+            ch.parentId = pid;
+            reparented.push({ id, pid });
+          },
+        };
+        existing.set(id, ch);
+        if (spec.type === 4) {
+          createdCategories.push(spec.name);
+        } else {
+          createdChannels.push(spec);
+        }
+        return ch;
+      },
+    },
+    roles: { everyone: { id: 'everyone-role' } },
+    members: { resolve: () => null, fetch: async () => ({ user: { id: 'bot-user' } }) },
+  };
+
+  const client = {
+    user: { id: 'bot-user' },
+    guilds: { fetch: async () => guild },
+  };
+  const cohort = {
+    guildId: 'test-guild',
+    supervisorIds: ['bot-user'],
+    channels: {},
+  };
+
+  const result = await registerSetup.ensureStandardChannels(client, cohort, guild);
+
+  assert.deepEqual(createdCategories, ['MENTOR Zone', 'Student zone', 'FUN & CHILL']);
+  assert.equal(result.created.length, 21);
+  assert.equal(result.failed.length, 0);
+
+  const welcomeCh = createdChannels.find(c => c.name.includes('welcome'));
+  assert.ok(welcomeCh.parent, 'welcome channel must have parent category');
+
+  const memeCh = createdChannels.find(c => c.name.includes('meme-verse'));
+  assert.ok(memeCh, 'meme-verse channel was created');
+  assert.ok(memeCh.parent, 'meme-verse has FUN & CHILL category parent');
+});
+
