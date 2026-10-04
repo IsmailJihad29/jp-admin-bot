@@ -156,7 +156,7 @@ async function restoreSelfHostedCohort(client) {
   for (const guild of client.guilds.cache.values()) {
     const channels = await guild.channels.fetch();
     const candidates = [...channels.values()].filter(channel =>
-      channel?.type === ChannelType.GuildText && normalizeChannelName(channel.name) === 'bot-admin');
+      channel?.type === ChannelType.GuildText && ['jp-admin', 'bot-admin'].includes(normalizeChannelName(channel.name)));
     for (const channel of candidates) {
       const message = await findCapsuleMessage(channel, client);
       if (!message) continue;
@@ -199,11 +199,13 @@ function adminOverwrites(guild, client, userId) {
 async function ensurePrivateBotAdmin(client, guild, userId) {
   const channels = await guild.channels.fetch();
   let channel = [...channels.values()].find(item =>
-    item?.type === ChannelType.GuildText && normalizeChannelName(item.name) === 'bot-admin');
+    item?.type === ChannelType.GuildText && ['jp-admin', 'bot-admin'].includes(normalizeChannelName(item.name)));
   if (!channel) {
+    const mentorZone = [...channels.values()].find(c => c && c.type === ChannelType.GuildCategory && String(c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '') === 'mentorzone');
     channel = await guild.channels.create({
-      name: 'bot-admin',
+      name: '🤖│jp-admin',
       type: ChannelType.GuildText,
+      parent: mentorZone ? mentorZone.id : undefined,
       permissionOverwrites: adminOverwrites(guild, client, userId),
       reason: 'JP ADMIN private setup channel',
     });

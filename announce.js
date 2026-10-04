@@ -27,9 +27,13 @@ const INTROS = {
   interviewUpdates: `🤖 **Share your interview calls here!**\n\nWhen you get an interview call, post it here (company + role). JP ADMIN instantly replies with a **personalized prep guide**: about the company, the role, what to practice, likely questions, and which project to showcase.\n\nEvery interview you share = **+15 Right-To-Be-Referred points**. Share them all! 🎯`,
   jobTaskUpdates: `🤖 **Job task tracking is active here.**\n\nWhen you receive a hiring task, technical assessment, or take-home project from a company, post it here using the pinned template (Candidate Name, Company, Designation, Deadline). JP ADMIN records it automatically to the tracking sheet so mentors can assist you with your submission. Best of luck! 📋`,
   outreach: `🤖 **Outreach tracking is active here.**\n\nPost your company lists, cold-message progress, and profile updates here — every post is logged automatically. Students below the configured outreach expectation are included in the scheduled follow-up report. Consistency wins jobs! 📣`,
-  hired: `🤖 **The celebration channel!** When a mentor announces a hire here and mentions the student, JP ADMIN automatically updates all records and excludes them from student reminders. 🎉`,
+  hired: `🎉 **The celebration channel!**\n\nWhen a student is successfully hired, mentors announce the achievement here. Everyone is welcome to congratulate and celebrate our successful candidates! 🥳💼`,
   rtbr: `⚖️ **Right-To-Be-Referred — how it works**\n\nOn the schedule configured by your mentors, JP ADMIN combines recent activity into one ranking:\n\n❓ **Questions** — points from every answered drop\n🎯 **Interviews** — points for interviews shared in the interview channel\n💼 **Job applications** — progress against this cohort's configured daily target\n🔥 **Streak** — consecutive days meeting that target\n🎤 **Workshop** — points for attended sessions\n\n**Top scorers get referred FIRST to mentor-special jobs.** Every point is visible in the tracking sheet — fully transparent. Climb the board! 🏆`,
   warning: `⚠️ **Attendance warning channel**\n\nJP ADMIN checks recorded Attendance on the working days and time configured by your mentors (default: Monday and Wednesday). A warning is posted only when a student has a **new pair of two consecutive unapproved absences**. Approved leave marked **L** is excluded.\n\n• Each new pair increases the counter by 1.\n• Three warnings represent six separately counted absence dates and make the student inactive.\n• Students can appeal from the eliminated-student notice.\n• If no new qualifying incident exists, this channel stays quiet—silence does not mean the check failed.\n\nMentors can verify privately with \`!activitycheck attendance\`, \`!warnings @student\`, and \`!warningreport\`.`,
+  jobPosts: `💼 **Job Opportunities!**\n\nStudents and mentors can share job circulars, hiring posts, and openings found across LinkedIn, job portals, and company careers pages here. Apply early and help each other grow! 🚀`,
+  resumes: `📄 **Resume Needed (Curated Openings & Referrals)**\n\nMentors and the Placement Team post verified job openings and priority referral opportunities here. Check the requirements, prepare your tailored resume, and apply promptly! 📋`,
+  memes: `🎭 **Welcome to Meme-Verse!**\n\nTake a break, share tech memes, funny coding moments, and chill with your peers and mentors. Keep it friendly and respectful! 🍿`,
+  issues: `🌴 **Leave Requests**\n\nNeed leave from sessions or tasks? Submit your leave request here using \`!leave\`. Mentors review and record all approved leaves in the attendance sheet. ✈️`,
 };
 
 function parseDiscordMessageLink(value) {
@@ -115,7 +119,7 @@ async function runAnnounceAll(client, cohort, msg) {
       }
     }
 
-    // mirror everything to #automation-announcement
+    // mirror everything to #announcements
     if (cohort.channels.automationLog) {
       try {
         const logCh = await client.channels.fetch(cohort.channels.automationLog);
@@ -123,7 +127,7 @@ async function runAnnounceAll(client, cohort, msg) {
           await logCh.send(text.slice(0, 2000));
           await sleep(1200);
         }
-      } catch (err) { failed.push('automation-announcement mirror: ' + err.message); }
+      } catch (err) { failed.push('announcements mirror: ' + err.message); }
     }
 
     if (msg) await msg.reply(`✅ Posted ${posted} announcements.` + (failed.length ? `\n⚠️ Issues:\n• ${failed.join('\n• ')}` : ''));

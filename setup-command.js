@@ -322,7 +322,7 @@ module.exports = function registerSetup(client) {
     if (command === '!repairpermissions') {
       if (!cohort.channels?.supervisor || msg.channelId !== cohort.channels.supervisor) {
         await msg.reply({
-          content: '❌ Run `!repairpermissions` in the configured private `#bot-admin` channel.',
+          content: `❌ Run \`!repairpermissions\` in the configured private <#${cohort.channels.supervisor}> channel.`,
           allowedMentions: { parse: [] },
         });
         return;

@@ -511,7 +511,7 @@ async function rulesMessageUrl(client, cohort) {
 }
 
 async function ensureRulesMessage(client, cohort) {
-  if (!cohort.channels.rules) throw new Error('rules-and-regulations channel not configured');
+  if (!cohort.channels.rules) throw new Error('rules channel not configured');
   const channel = await client.channels.fetch(cohort.channels.rules);
   const savedId = await getState(cohort, rulesKey(cohort));
   if (savedId) {
@@ -530,7 +530,7 @@ async function ensureRulesMessage(client, cohort) {
 }
 
 async function ensureOnboardingPanel(client, cohort, rulesMessage) {
-  if (!cohort.channels.welcome) throw new Error('welcome-to-the-bootcamp channel not configured');
+  if (!cohort.channels.welcome) throw new Error('welcome channel not configured');
   const channel = await client.channels.fetch(cohort.channels.welcome);
   const rulesUrl = rulesMessage.url || `https://discord.com/channels/${cohort.guildId}/${cohort.channels.rules}/${rulesMessage.id}`;
   const payload = {
@@ -1143,7 +1143,7 @@ module.exports = function registerOnboarding(client) {
       }
       if (lower.startsWith('!setrulesmessage')) {
         const match = msg.content.match(/discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/i);
-        if (!match) return msg.reply('Usage: `!setrulesmessage <Discord message link from #rules-and-regulations>`');
+        if (!match) return msg.reply('Usage: `!setrulesmessage <Discord message link from #rules>`');
         if (match[1] !== cohort.guildId || match[2] !== cohort.channels.rules) {
           return msg.reply(`That link must be a message from <#${cohort.channels.rules}> in this server.`);
         }
