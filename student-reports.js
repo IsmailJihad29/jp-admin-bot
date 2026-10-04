@@ -59,7 +59,7 @@ async function sendAllReport(channel, cohort, needsAttention = false) {
       title,
       description: `Period: **${data.start} to ${data.end}** · ${students.length} active student(s)${needsAttention ? ' · review rule: applications or attendance below 50% of their configured primary target' : ''}\n${targetSummaryLine(targets)}`,
       color: needsAttention ? 0xe67e22 : 0x3498db,
-      footer: { text: 'Private bot-admin report. Contact information must not be reposted publicly.' },
+      footer: { text: 'Private admin report. Contact information must not be reposted publicly.' },
     }],
   });
   const lines = students.map((student, index) => metricLine(student, index + 1, targets));
@@ -165,7 +165,7 @@ module.exports = function registerStudentReports(client) {
     if (!valid || !interaction.customId.startsWith('student_report_')) return;
     const cohort = cohorts.find(candidate => candidate.guildId === interaction.guildId);
     if (!cohort || !cohort.supervisorIds.includes(interaction.user.id) || interaction.channelId !== cohort.channels.supervisor) {
-      await interaction.reply({ content: 'This private report is available only to configured supervisors in #bot-admin.', ephemeral: true }).catch(() => {});
+      await interaction.reply({ content: `This private report is available only to configured supervisors in <#${cohort?.channels?.supervisor || 'jp-admin'}>.`, ephemeral: true }).catch(() => {});
       return;
     }
     await interaction.deferReply({ ephemeral: true });
@@ -175,7 +175,7 @@ module.exports = function registerStudentReports(client) {
       } else {
         await sendAllReport(interaction.channel, cohort, interaction.customId === 'student_report_attention');
       }
-      await interaction.editReply('✅ Private report posted in #bot-admin.');
+      await interaction.editReply(`✅ Private report posted in <#${cohort.channels?.supervisor || 'jp-admin'}>.`);
     } catch (err) {
       console.error(`[student-reports] ${cohort.name} failed:`, err.message);
       await interaction.editReply(`❌ Report failed: ${err.message.slice(0, 300)}`);

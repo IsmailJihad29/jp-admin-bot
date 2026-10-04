@@ -166,7 +166,7 @@ const SECTIONS = [
     ['!supervisor list|add @user|remove @user', 'Manage this server’s supervisors, private permissions, and roster exclusion'],
     ['!intake status|enable [slug]|disable|link', 'Control the secure pre-entry Discord OAuth portal and share its cohort-specific link'],
     ['!setupcohortsheet [Sheet URL]', 'One-command required Sheet/tab/trigger setup'],
-    ['!formtemplate', 'Show editable/saved form-template commands (use in #bot-admin)'],
+    ['!formtemplate', 'Show editable/saved form-template commands (use in #jp-admin)'],
     ['!formtemplate show enrollment|attendance', 'Review every working-template question and choice'],
     ['!createforms <cohort name>', 'Build forms from the validated working template'],
     ['!createforms attendance [cohort name]', 'Portal cohorts: create only the daily attendance Google Form'],
@@ -285,7 +285,7 @@ function categoryPayload(sectionIndex) {
       title: `JP ADMIN Command Center — ${category}`,
       color: 0x5865f2,
       fields: entriesToFields(category, entries),
-      footer: { text: `${entries.length} commands · Copy a command and send it in #bot-admin.` },
+      footer: { text: `${entries.length} commands · Copy a command and send it in #jp-admin.` },
     }],
     allowedMentions: { parse: [] },
   };
@@ -405,7 +405,7 @@ module.exports = function registerHelp(client) {
     const [, action, guildId] = interaction.customId.split(':');
     const cohort = authorizedCohort(interaction, guildId);
     if (!cohort || interaction.channelId !== cohort.channels.supervisor) {
-      if (interaction.isRepliable()) await interaction.reply({ content: 'This Command Center is restricted to this cohort’s mentors in #bot-admin.', ephemeral: true });
+      if (interaction.isRepliable()) await interaction.reply({ content: 'This Command Center is restricted to this cohort’s mentors in #jp-admin.', ephemeral: true });
       return;
     }
     try {

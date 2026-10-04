@@ -75,7 +75,7 @@ async function workshopPanel(cohort) {
           value: `Confirmation request: **${specialDate || 'not scheduled'} ${specialTime}**\nTitle: **${specialTitle}**\nThe final announcement goes only to Dawn Focus Circle after confirmation.`,
         },
       ],
-      footer: { text: 'All controls and confirmations stay private in #bot-admin.' },
+      footer: { text: 'All controls and confirmations stay private in #jp-admin.' },
     }],
     components: [
       new ActionRowBuilder().addComponents(
@@ -273,7 +273,7 @@ module.exports = function registerWorkshop(client) {
     const cohort = cohorts.find(candidate => candidate.guildId === interaction.guildId);
     if (!cohort || !cohort.supervisorIds.includes(interaction.user.id) ||
         interaction.channelId !== cohort.channels.supervisor) {
-      await interaction.reply({ content: 'Workshop controls are private to configured supervisors in #bot-admin.', ephemeral: true }).catch(() => {});
+      await interaction.reply({ content: 'Workshop controls are private to configured supervisors in #jp-admin.', ephemeral: true }).catch(() => {});
       return;
     }
     const [, action, kind, token] = interaction.customId.split(':');
@@ -298,7 +298,7 @@ module.exports = function registerWorkshop(client) {
       if (interaction.isButton() && action === 'request') {
         await interaction.deferReply({ ephemeral: true });
         await requestApproval(client, cohort, kind);
-        await interaction.editReply(`✅ ${kind === 'special' ? 'Special Dawn' : 'Daily'} workshop confirmation posted in #bot-admin.`);
+        await interaction.editReply(`✅ ${kind === 'special' ? 'Special Dawn' : 'Daily'} workshop confirmation posted in #jp-admin.`);
         return;
       }
       if (interaction.isButton() && action === 'cancel') {

@@ -726,7 +726,7 @@ module.exports = function registerStudentDataSurvey(client) {
         const cohort = resolveAdminCohort(interaction);
         if (!cohort || cohort.guildId !== adminEdit.guildId) {
           await interaction.reply({
-            content: 'This private editor is only available to configured supervisors in bot-admin.',
+            content: 'This private editor is only available to configured supervisors in jp-admin.',
             ephemeral: true,
           });
           return;
@@ -761,7 +761,7 @@ module.exports = function registerStudentDataSurvey(client) {
       const cohort = resolveAdminCohort(interaction);
       if (!cohort) {
         await interaction.reply({
-          content: 'This control is only available to configured supervisors in this cohort’s private bot-admin channel.',
+          content: 'This control is only available to configured supervisors in this cohort’s private jp-admin channel.',
           ephemeral: true,
         });
         return;
@@ -779,7 +779,7 @@ module.exports = function registerStudentDataSurvey(client) {
         const delivery = await sendPrivateSurveys(client, cohort, pending);
         await sendDeliveryReport(interaction.channel, delivery);
         await interaction.editReply(
-          `✅ Finished: ${delivery.sent.length} private survey(s) sent. Delivery problems are listed only in bot-admin.`,
+          `✅ Finished: ${delivery.sent.length} private survey(s) sent. Delivery problems are listed only in jp-admin.`,
         );
       } catch (err) {
         console.error('[student-data] dashboard action failed:', err);
@@ -840,7 +840,7 @@ module.exports = function registerStudentDataSurvey(client) {
       const cohort = resolveAdminCohort(interaction);
       if (!cohort || cohort.guildId !== adminSubmit.guildId) {
         await interaction.reply({
-          content: 'This private editor is only available to configured supervisors in bot-admin.',
+          content: 'This private editor is only available to configured supervisors in jp-admin.',
           ephemeral: true,
         });
         return;

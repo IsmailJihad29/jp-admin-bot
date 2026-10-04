@@ -361,7 +361,7 @@ module.exports = function registerWorkCalendar(client) {
         !cohort.supervisorIds.includes(interaction.user.id) ||
         interaction.channelId !== cohort.channels.supervisor) {
       await interaction.reply({
-        content: 'Calendar controls are private to configured supervisors in #bot-admin.',
+        content: 'Calendar controls are private to configured supervisors in #jp-admin.',
         ephemeral: true,
       }).catch(() => {});
       return;

@@ -81,15 +81,12 @@ const QUESTIONS = {
 
 const DEFAULT_RULES = `# 📜 Bootcamp Rules & Regulations
 
-1. **Respect everyone.** No harassment, discrimination, bullying, personal attacks, or inappropriate content.
-2. **Keep communication professional.** Use the correct channels, avoid spam, and give constructive feedback.
-3. **Protect privacy.** Do not share another member's phone number, resume, interview details, or private messages without permission.
-4. **Be honest.** Never fake attendance, applications, outreach, interviews, projects, or AI-assisted work.
-5. **Participate consistently.** Follow the attendance, workshop, outreach, and job-tracking expectations that apply to you.
-6. **Share safe opportunities.** Do not post scams, paid-job promises, unverified links, or misleading recruitment information.
-7. **Use AI responsibly.** Learn from it; do not submit copied answers or claim generated work as your own.
-8. **Follow Discord's rules and applicable law.** Mentors may warn, restrict, or remove members when needed.
-9. **Ask for help early.** Contact your mentor if study, health, safety, or personal circumstances affect participation.
+1. **Respect Everyone:** Treat mentors and peers with kindness and professionalism. No harassment, bullying, or inappropriate behavior.
+2. **Use the Right Channels:** Post topics in their designated channels (e.g. share interviews in the interview update channel, apply for leave in leave requests).
+3. **Protect Privacy:** Keep personal contact details, resumes, and private discussions confidential.
+4. **Honesty & Integrity:** Accurately log attendance, job applications, and tasks. Do not submit unreviewed copy-pasted work.
+5. **Consistency Matters:** Attend scheduled sessions, submit daily tasks, and maintain your job search momentum.
+6. **Support Each Other:** Share authentic job openings, helpful resources, and celebrate peer achievements!
 
 By accepting these rules during onboarding, you agree to follow them while participating in the bootcamp.`;
 
@@ -534,7 +531,7 @@ async function ensureOnboardingPanel(client, cohort, rulesMessage) {
   const channel = await client.channels.fetch(cohort.channels.welcome);
   const rulesUrl = rulesMessage.url || `https://discord.com/channels/${cohort.guildId}/${cohort.channels.rules}/${rulesMessage.id}`;
   const payload = {
-    content: '## 👋 Welcome to the Bootcamp\nRead the rules, complete your private contact profile, then finish the role-profile questions. Email and phone stay private. Location, availability, work mode, English level and honestly selected skills become separate Discord roles. Existing and new members can update their answers safely.',
+    content: `## 👋 Welcome to the Bootcamp!\n\nWelcome! Please complete your quick onboarding steps below:\n\n1. 📜 Read the rules in <#${cohort.channels.rules}>.\n2. 👤 Click **Start Onboarding** below to verify your private contact information.\n3. 🏷️ Complete your profile questions (Location, Availability, Work Mode, and Skills) to receive your roles.\n\n*Note: Your email and phone number remain private to mentors.*`,
     components: publicComponents(rulesUrl, cohort),
     allowedMentions: { parse: [] },
   };

@@ -106,7 +106,7 @@ async function handleResourceSyncCommand(client, msg, cohort, action) {
     await msg.reply({
       content: lines.length
         ? `**${source.name} resource destinations**\n${lines.join('\n')}\n\n` +
-          'Enable or disable sync from each destination server\'s private bot-admin.'
+          'Enable or disable sync from each destination server\'s private jp-admin.'
         : 'No destination cohort is active.',
       allowedMentions: { parse: [] },
     });

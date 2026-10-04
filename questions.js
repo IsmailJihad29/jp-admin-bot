@@ -590,7 +590,7 @@ module.exports = function registerQuestions(client) {
     const cohort = cohorts.find(candidate => candidate.guildId === interaction.guildId);
     if (!cohort || !cohort.supervisorIds.includes(interaction.user.id) ||
         interaction.channelId !== cohort.channels.supervisor) {
-      await interaction.reply({ content: 'Question controls are private to configured supervisors in #bot-admin.', ephemeral: true }).catch(() => {});
+      await interaction.reply({ content: 'Question controls are private to configured supervisors in #jp-admin.', ephemeral: true }).catch(() => {});
       return;
     }
     const action = interaction.customId.split(':')[1];

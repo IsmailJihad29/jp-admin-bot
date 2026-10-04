@@ -198,7 +198,7 @@ function requestEmbed(cohort, request) {
       { name: 'Request ID', value: `\`${request.requestId}\``, inline: false },
       { name: 'Private contact', value: `${request.email || 'NO EMAIL'}\n${request.phone || 'NO PHONE'}`, inline: false },
     )
-    .setFooter({ text: 'Reason and contact details are private to bot-admin.' });
+    .setFooter({ text: 'Reason and contact details are private to jp-admin.' });
 }
 
 function selectManagerIndex(requests, requestId, direction = 'current') {
@@ -228,7 +228,7 @@ function managerPayload(cohort, requests, index = 0) {
   const safeIndex = Math.max(0, Math.min(requests.length - 1, index));
   const request = requests[safeIndex];
   const embed = requestEmbed(cohort, request)
-    .setFooter({ text: `Pending ${safeIndex + 1} of ${requests.length} · oldest first · private bot-admin data` });
+    .setFooter({ text: `Pending ${safeIndex + 1} of ${requests.length} · oldest first · private jp-admin data` });
   const navigation = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`leave:page:${cohort.guildId}:${request.requestId}:previous`)
       .setLabel('Previous').setStyle(ButtonStyle.Secondary).setDisabled(safeIndex === 0),
@@ -353,7 +353,7 @@ module.exports = function registerLeave(client) {
           : `✅ Leave request **${outcome.requestId.slice(0, 8)}** was queued and sent privately to your mentors.`);
       }
       if (!cohort.supervisorIds.includes(interaction.user.id)) throw new Error('Only a configured supervisor can decide leave');
-      if (interaction.channelId !== cohort.channels.supervisor) throw new Error('Manage leave only in the private bot-admin channel');
+      if (interaction.channelId !== cohort.channels.supervisor) throw new Error('Manage leave only in the private jp-admin channel');
       if (parts[2] !== cohort.guildId) throw new Error('This leave control belongs to a different cohort');
       const action = parts[1];
       if (action === 'page' && interaction.isButton()) {

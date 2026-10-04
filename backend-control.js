@@ -124,7 +124,7 @@ function helpPayload() {
         '`!backend override 2026-09-11 00:00-02:00` — use a special window on one date',
         '`!backend override 2026-09-11 clear` — remove a special-date window',
       ].join('\n'),
-      footer: { text: 'Use only in the protected control cohort’s private #bot-admin.' },
+      footer: { text: 'Use only in the protected control cohort’s private #jp-admin.' },
     }],
     allowedMentions: { parse: [] },
   };

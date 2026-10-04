@@ -139,7 +139,7 @@ async function showTemplate(msg, template, kind) {
 
 function usage() {
   return [
-    '**Form template commands (run in #bot-admin)**',
+    '**Form template commands (run in #jp-admin)**',
     '`!formtemplate show enrollment|attendance`',
     '`!formtemplate add <kind> <type> required|optional | Question | Choice 1 | Choice 2 | Other`',
     '`!formtemplate edit <kind> <number> <type> required|optional | Question | choices...`',
@@ -312,7 +312,7 @@ module.exports = function registerCohortAdmin(client) {
     if (!/^!(formtemplate|createforms|designforms)\b/i.test(content)) return;
 
     if (cohort.channels?.supervisor && msg.channelId !== cohort.channels.supervisor) {
-      await msg.reply({ content: '❌ Form creation and template editing must be done in the private `#bot-admin` channel.', allowedMentions: { parse: [] } });
+      await msg.reply({ content: `❌ Form creation and template editing must be done in the private admin channel (<#${cohort.channels.supervisor}>).`, allowedMentions: { parse: [] } });
       return;
     }
 
